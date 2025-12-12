@@ -1,4 +1,20 @@
 
+# --- ADD THIS HELPER (place it near other helpers) ---
+def get_list(d, names):
+    for n in names:
+        if n in d:
+            return d[n]
+    return []
+
+# --- REPLACE THESE LINES ---
+# shirt_meas = data.get("Measurements – Shirt", [])
+# trouser_meas = data.get("Measurements – Trouser", [])
+# styles = data.get("Style Choices", {})
+
+# --- WITH# --- WITH THESE ---
+shirt_meas   = get_list(data, ["Measurements – Shirt", "Measurements - Shirt"])
+trouser_meas = get_list(data, ["Measurements – Trouser", "Measurements - Trouser"])
+
 # scripts/generate_html.py
 # Converts structured client JSON into a styled HTML file under /clients/<slug>.html
 # Uses string.Template (safe: no f-strings), so CSS/HTML braces won't break parsing.
