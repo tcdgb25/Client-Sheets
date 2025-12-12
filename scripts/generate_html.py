@@ -1,4 +1,3 @@
-
 # scripts/generate_html.py
 # Converts structured client JSON into a styled HTML file under /clients/<slug>.html
 
@@ -24,7 +23,7 @@ def safe_get(d, *keys, default=''):
     return cur
 
 def render_table(rows, headers):
-    # rows: list of dicts with keys matching headers
+    """rows: list[dict] with keys matching headers"""
     html = ["<table><thead><tr>"]
     for h in headers:
         html.append(f"<th>{h}</th>")
@@ -46,10 +45,10 @@ def main():
     with open(input_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    # Expecting high-level keys similar to your sample:
+    # Expect top-level keys as per your sample:
     # "Client Information", "Measurements – Shirt", "Measurements – Trouser",
-    # "Style Choices" { "Shirt": [...], "Trouser": [...] },
-    # "Tailor Instructions": [...]
+    # "Style Choices" { "Shirt": [...], "Trouser": [...] }, "Tailor Instructions": [...]
+
     ci = safe_get(data, "Client Information", default={})
     name = safe_get(ci, "Name", default="Unknown Client")
     date_str = safe_get(ci, "Date", default="")
@@ -58,16 +57,13 @@ def main():
     weight = safe_get(ci, "Weight", default="")
     notes = safe_get(ci, "Notes", default="")
 
-    # Measurements: expect arrays of dicts with keys "Area", "Measurement", "Notes"
     shirt_meas = data.get("Measurements – Shirt", [])
     trouser_meas = data.get("Measurements – Trouser", [])
 
-    # Style choices: expect dict like {"Shirt": [...], "Trouser": [...]}
     styles = data.get("Style Choices", {})
     style_shirt = styles.get("Shirt", [])
     style_trouser = styles.get("Trouser", [])
 
-    # Tailor Instructions: list of strings
     instructions = data.get("Tailor Instructions", [])
 
     # Prepare output dir and file
@@ -75,7 +71,6 @@ def main():
     slug = slugify(name)
     out_path = os.path.join("clients", f"{slug}.html")
 
-    # Minimal CSS & layout per your spec
     css = """
     :root{ --bg:#fafafa; --text:#111; --muted:#555; --border:#ddd }
     *{ box-sizing:border-box }
@@ -96,7 +91,6 @@ def main():
     footer{ padding:16px 24px 24px; color:var(--muted); font-size:12px }
     """
 
-    # Build HTML sections
     info_html = f"""
       <div class="info-grid">
         <div><strong>Name:</strong> {name}</div>
@@ -153,7 +147,7 @@ def main():
 
     <section>
       <h2>Section 4: Tailor Instructions</h2>
-      <ul>{instructions_html}</ul>
+      <ul>{instructions_html      <ul>{instructions_html}</ul>
     </section>
 
     <footer>
@@ -170,4 +164,3 @@ def main():
     print(f"Created: {out_path}")
 
 if __name__ == "__main__":
-   
