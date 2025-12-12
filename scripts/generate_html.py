@@ -10,11 +10,13 @@ import re
 from datetime import datetime
 from string import Template
 
+
 def slugify(name: str) -> str:
     s = name.strip().lower()
     s = re.sub(r'[^a-z0-9\- ]', '', s)
     s = s.replace(' ', '-')
     return s or 'client'
+
 
 def safe_get(d, *keys, default=''):
     cur = d
@@ -24,6 +26,7 @@ def safe_get(d, *keys, default=''):
         else:
             return default
     return cur
+
 
 def render_table(rows, headers):
     """rows: list[dict] with keys matching headers"""
@@ -38,6 +41,7 @@ def render_table(rows, headers):
         parts.append("</tr>")
     parts.append("</tbody></table>")
     return "".join(parts)
+
 
 def main():
     if len(sys.argv) < 2:
@@ -81,3 +85,104 @@ def main():
     h2{ font-size:18px; margin:0 0 12px; color:#222 }
     h3{ font-size:16px; margin:10px 0 8px; color:#222 }
     table{ width:100%; border-collapse:collapse; margin:8px 0 16px }
+    th, td{ border:1px solid var(--border); padding:10px 12px; text-align:left; vertical-align:top }
+    th{ background:#f4f6f8; font-weight:600 }
+    ul{ margin:8px 0 0 20px }
+    li{ margin:6px 0 }
+    .info-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:10px }
+    footer{ padding:16px 24px 24px; color:var(--muted); font-size:12px }
+    """
+
+    info_html = (
+        f"""
+      <div class="info-grid">
+        <div><strong>Name:</strong> {name}</div>
+        <div><strong>Height:</strong> {height}</div>
+        <div><strong>Weight:</strong> {weight}</div>
+        <div><strong>Notes:</strong> {notes}</div>
+      </div>
+    """
+    )
+
+    shirt_table = render_table(shirt_meas, ["Area", "Measurement", "Notes"])
+    trouser_table = render_table(trouser_meas, ["Area", "Measurement", "Notes"])
+
+    style_shirt_html = "".join([f"<li>{item}</li>" for item in style_shirt])
+    style_trouser_html = "".join([f"<li>{item}</li>" for item in style_trouser])
+    instructions_html = "".join([f"<li>{item}</li>" for item in instructions])
+
+    tpl = Template(
+        """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Client Sheet – $name</title>
+  <style>$css</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Client Sheet – $name</h1>
+      <div class="meta">Date: $date_str · Garment: $garment</div>
+    </header>
+
+    <section>
+      <h2>Section 1: Client Information</h2>
+      $info_html
+    </section>
+
+    <section>
+      <h2>Section 2: Measurements</h2>
+
+      <h3>Shirt</h3>
+      $shirt_table
+
+      <h3>Trouser</h3>
+      $trouser_table
+    </section>
+
+    <section>
+      <h2>Section 3: Style Choices</h2>
+      <h3>Shirt</h3>
+      <ul>$style_shirt_html</ul>
+      <h3>Trouser</h3>
+      <ul>$style_trouser_html</ul>
+    </section>
+
+    <section>
+      <h2>Section 4: Tailor Instructions</h2>
+      <ul>$instructions_html</ul>
+    </section>
+
+    <footer>
+      Generated on $generated_on
+    </footer>
+  </div>
+</body>
+</html>
+"""
+    )
+
+    html = tpl.substitute(
+        name=name,
+        date_str=date_str,
+        garment=garment,
+        css=css,
+        info_html=info_html,
+        shirt_table=shirt_table,
+        trouser_table=trouser_table,
+        style_shirt_html=style_shirt_html,
+        style_trouser_html=style_trouser_html,
+        instructions_html=instructions_html,
+        generated_on=datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC'),
+    )
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(html)
+
+    print(f"Created: {out_path}")
+
+
+if __name__ == "__main__":
+    main()
