@@ -1,15 +1,17 @@
 # scripts/generate_html.py
 # Converts structured client JSON into a styled HTML file under /clients/<slug>.html
+# Uses string.Template (safe: no f-strings), so CSS/HTML braces won't break parsing.
 
 import json
 import sys
 import os
 import re
 from datetime import datetime
+from string import Template
 
 def slugify(name: str) -> str:
     s = name.strip().lower()
-    s = re.sub(r'[^a-z0-9\- ]', '', s)
+    s = re.sub(r'[^a-z0-9\\- ]', '', s)
     s = s.replace(' ', '-')
     return s or 'client'
 
@@ -24,17 +26,17 @@ def safe_get(d, *keys, default=''):
 
 def render_table(rows, headers):
     """rows: list[dict] with keys matching headers"""
-    html = ["<table><thead><tr>"]
+    parts = ["<table><thead><tr>"]
     for h in headers:
-        html.append(f"<th>{h}</th>")
-    html.append("</tr></thead><tbody>")
+        parts.append(f"<th>{h}</th>")
+    parts.append("</tr></thead><tbody>")
     for r in rows or []:
-        html.append("<tr>")
+        parts.append("<tr>")
         for h in headers:
-            html.append(f"<td>{r.get(h, '')}</td>")
-        html.append("</tr>")
-    html.append("</tbody></table>")
-    return "".join(html)
+            parts.append(f"<td>{r.get(h, '')}</td>")
+        parts.append("</tr>")
+    parts.append("</tbody></table>")
+    return "".join(parts)
 
 def main():
     if len(sys.argv) < 2:
@@ -45,10 +47,7 @@ def main():
     with open(input_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    # Expect top-level keys as per your sample:
-    # "Client Information", "Measurements – Shirt", "Measurements – Trouser",
-    # "Style Choices" { "Shirt": [...], "Trouser": [...] }, "Tailor Instructions": [...]
-
+    # Read data
     ci = safe_get(data, "Client Information", default={})
     name = safe_get(ci, "Name", default="Unknown Client")
     date_str = safe_get(ci, "Date", default="")
@@ -59,14 +58,12 @@ def main():
 
     shirt_meas = data.get("Measurements – Shirt", [])
     trouser_meas = data.get("Measurements – Trouser", [])
-
     styles = data.get("Style Choices", {})
     style_shirt = styles.get("Shirt", [])
     style_trouser = styles.get("Trouser", [])
-
     instructions = data.get("Tailor Instructions", [])
 
-    # Prepare output dir and file
+    # Prepare output
     os.makedirs("clients", exist_ok=True)
     slug = slugify(name)
     out_path = os.path.join("clients", f"{slug}.html")
@@ -107,56 +104,70 @@ def main():
     style_trouser_html = "".join([f"<li>{item}</li>" for item in style_trouser])
     instructions_html = "".join([f"<li>{item}</li>" for item in instructions])
 
-    html = f"""<!doctype html>
+    tpl = Template("""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Client Sheet – {name}</title>
-  <style>{css}</style>
+  <title>Client Sheet – $name</title>
+  <style>$css</style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Client Sheet – {name}</h1>
-      <div class="meta">Date: {date_str} · Garment: {garment}</div>
+      <h1>Client Sheet – $name</h1>
+      <div class="meta">Date: $date_str · Garment: $garment</div>
     </header>
 
     <section>
       <h2>Section 1: Client Information</h2>
-      {info_html}
+      $info_html
     </section>
 
     <section>
       <h2>Section 2: Measurements</h2>
 
       <h3>Shirt</h3>
-      {shirt_table}
+      $shirt_table
 
       <h3>Trouser</h3>
-      {trouser_table}
+      $trouser_table
     </section>
 
     <section>
       <h2>Section 3: Style Choices</h2>
       <h3>Shirt</h3>
-      <ul>{style_shirt_html}</ul>
+      <ul>$style_shirt_html</ul>
       <h3>Trouser</h3>
-      <ul>{style_trouser_html}</ul>
+      <ul>$style_trouser_html</ul>
     </section>
 
     <section>
       <h2>Section 4: Tailor Instructions</h2>
-      <ul>{instructions_html      <ul>{instructions_html}</ul>
+      <ul>$instructions_html</ul>
     </section>
 
     <footer>
-      Generated on {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}
+      Generated on $generated_on
     </footer>
   </div>
 </body>
 </html>
-"""
+""")
+
+    html = tpl.substitute(
+        name=name,
+        date_str=date_str,
+        garment=garment,
+        css=css,
+        info_html=info_html,
+        shirt_table=shirt_table,
+        trouser_table=trouser_table,
+        style_shirt_html=style_shirt_html,
+        style_trouser_html=style_trouser_html,
+        instructions_html=instructions_html,
+        generated_on=datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
+    )
 
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
